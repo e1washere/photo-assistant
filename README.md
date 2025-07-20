@@ -1,22 +1,34 @@
 # Photo Assistant
 
+[![CI/CD](https://github.com/e1washere/photo-assistant/workflows/CI%2FCD/badge.svg)](https://github.com/e1washere/photo-assistant/actions)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red.svg)](https://streamlit.io/)
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange.svg)](https://openai.com/)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Vision%20API-yellow.svg)](https://cloud.google.com/vision)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/e1washere/photo-assistant/actions)
 
 AI-powered image analysis system using Google Cloud Vision API and OpenAI GPT-4 for intelligent image understanding and Q&A capabilities.
 
+## 🚀 Enterprise Features
+
+- **CI/CD Pipeline** - Automated testing and deployment
+- **Performance Monitoring** - Real-time metrics and health checks
+- **API Documentation** - Swagger/OpenAPI integration
+- **Dashboard** - Real-time system monitoring
+- **Unit Testing** - Comprehensive test coverage
+- **Code Quality** - Linting and formatting automation
+
 ## Technologies
 
-- Google Cloud Vision API
-- OpenAI GPT-4
-- Sentence Transformers
-- Python 3.11
-- Streamlit
-- Flask
+- **AI/ML**: Google Cloud Vision API, OpenAI GPT-4, Sentence Transformers
+- **Backend**: Python 3.11+, Flask, FastAPI
+- **Frontend**: Streamlit, HTML/CSS/JS
+- **DevOps**: GitHub Actions, Docker, Docker Compose
+- **Monitoring**: Custom metrics collection, System health tracking
+- **Testing**: Pytest, Coverage reporting
 
 ## Installation
 

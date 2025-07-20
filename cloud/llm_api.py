@@ -129,7 +129,7 @@ class LLMAPI:
         labels = response.get('labelAnnotations', [])
         if labels:
             label_text = "Detected objects/concepts: " + ", ".join(
-                [f"{label['description']} ({label['score']:.2f})" for label in labels[:5]]
+                [f"{label['description']} ({label.get('score', 0.0):.2f})" for label in labels[:5]]
             )
             formatted_parts.append(label_text)
         
@@ -143,7 +143,7 @@ class LLMAPI:
         objects = response.get('localizedObjectAnnotations', [])
         if objects:
             object_text = "Specific objects: " + ", ".join(
-                [f"{obj['name']} ({obj['score']:.2f})" for obj in objects[:3]]
+                [f"{obj['name']} ({obj.get('score', 0.0):.2f})" for obj in objects[:3]]
             )
             formatted_parts.append(object_text)
         

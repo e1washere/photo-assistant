@@ -1,0 +1,699 @@
+"""
+Flask Web Application
+
+Modern web interface for the Photo Assistant application,
+providing image upload, analysis, and interactive Q&A capabilities.
+"""
+
+import os
+import uuid
+from pathlib import Path
+from typing import Dict, Any, Optional
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
+import json
+
+
+def create_app(vision_api, llm_api, faq_handler):
+    """
+    Create and configure Flask application.
+    
+    Args:
+        vision_api: Vision API instance
+        llm_api: LLM API instance
+        faq_handler: FAQ handler instance
+        
+    Returns:
+        Configured Flask application
+    """
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['UPLOAD_FOLDER'] = Path(__file__).parent.parent / 'static' / 'uploads'
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+    
+    # Ensure upload directory exists
+    app.config['UPLOAD_FOLDER'].mkdir(parents=True, exist_ok=True)
+    
+    # Allowed file extensions
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    
+    def allowed_file(filename):
+        return '.' in filename and \
+               filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
+    @app.route('/')
+    def index():
+        """Main application page."""
+        return render_template('index.html')
+    
+    @app.route('/upload', methods=['POST'])
+    def upload_file():
+        """Handle file upload and analysis."""
+        try:
+            if 'file' not in request.files:
+                return jsonify({'error': 'No file provided'}), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            if file and allowed_file(file.filename):
+                # Generate unique filename
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                file_path = app.config['UPLOAD_FOLDER'] / unique_filename
+                
+                # Save file
+                file.save(file_path)
+                
+                # Analyze image with Vision API
+                vision_description, labels = vision_api.analyze_image(str(file_path))
+                
+                # Generate enhanced description and tags with LLM
+                llm_description, tags = llm_api.generate_description_tags(vision_description)
+                
+                return jsonify({
+                    'success': True,
+                    'filename': unique_filename,
+                    'vision_description': vision_description,
+                    'llm_description': llm_description,
+                    'labels': labels,
+                    'tags': tags
+                })
+            
+            return jsonify({'error': 'Invalid file type'}), 400
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/ask', methods=['POST'])
+    def ask_question():
+        """Handle questions about uploaded images."""
+        try:
+            data = request.get_json()
+            question = data.get('question', '')
+            filename = data.get('filename', '')
+            
+            if not question or not filename:
+                return jsonify({'error': 'Question and filename required'}), 400
+            
+            # Check if file exists
+            file_path = app.config['UPLOAD_FOLDER'] / filename
+            if not file_path.exists():
+                return jsonify({'error': 'File not found'}), 404
+            
+            # Analyze image if not already done
+            vision_description, labels = vision_api.analyze_image(str(file_path))
+            
+            # Create analysis result for LLM
+            analysis_result = {
+                'responses': [{
+                    'labelAnnotations': [{'description': label} for label in labels],
+                    'description': vision_description
+                }]
+            }
+            
+            # Get answer from LLM
+            answer = llm_api.analyze_photo_with_question(analysis_result, question)
+            
+            return jsonify({
+                'success': True,
+                'answer': answer,
+                'vision_description': vision_description,
+                'labels': labels
+            })
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/faq', methods=['GET'])
+    def get_faq():
+        """Get FAQ data."""
+        try:
+            categories = faq_handler.get_categories()
+            all_questions = faq_handler.get_all_questions()
+            
+            return jsonify({
+                'success': True,
+                'categories': categories,
+                'questions': all_questions
+            })
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/faq/search', methods=['POST'])
+    def search_faq():
+        """Search FAQ questions."""
+        try:
+            data = request.get_json()
+            query = data.get('query', '')
+            
+            if not query:
+                return jsonify({'error': 'Search query required'}), 400
+            
+            results = faq_handler.search_questions(query)
+            
+            return jsonify({
+                'success': True,
+                'results': results
+            })
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/faq/answer', methods=['POST'])
+    def answer_faq_question():
+        """Answer FAQ questions using semantic similarity."""
+        try:
+            data = request.get_json()
+            question = data.get('question', '')
+            
+            if not question:
+                return jsonify({'error': 'Question required'}), 400
+            
+            answer = faq_handler.answer_question(question)
+            similar_questions = faq_handler.get_similar_questions(question, top_k=3)
+            
+            return jsonify({
+                'success': True,
+                'answer': answer,
+                'similar_questions': [
+                    {
+                        'question': qa[0],
+                        'answer': qa[1],
+                        'similarity': round(qa[2], 3)
+                    }
+                    for qa in similar_questions
+                ]
+            })
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/uploads/<filename>')
+    def uploaded_file(filename):
+        """Serve uploaded files."""
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    
+    @app.route('/health')
+    def health_check():
+        """Health check endpoint."""
+        return jsonify({'status': 'healthy', 'service': 'photo-assistant'})
+    
+    # Create templates directory and HTML template
+    templates_dir = Path(__file__).parent / 'templates'
+    templates_dir.mkdir(exist_ok=True)
+    
+    # Create the main HTML template
+    html_template = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Assistant - AI-Powered Image Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .upload-section, .chat-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #edf2f7;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: #a0aec0;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .chat-container {
+            height: 400px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f7fafc;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        
+        .message.user {
+            background-color: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.assistant {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            background-color: white;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-right: 10px;
+            font-size: 1rem;
+        }
+        
+        .chat-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .faq-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+        
+        .faq-item {
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .faq-question {
+            background-color: #f7fafc;
+            padding: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .faq-answer {
+            padding: 15px;
+            display: none;
+            background-color: white;
+        }
+        
+        .faq-answer.show {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 Photo Assistant</h1>
+            <p>AI-Powered Image Analysis & Intelligent Q&A</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">📁 Upload & Analyze</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">Click to upload or drag & drop</div>
+                    <div class="upload-hint">Supports: JPG, PNG, GIF, WebP (max 16MB)</div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*">
+                <button class="btn" id="uploadBtn" disabled>Analyze Image</button>
+                <div class="loading" id="uploadLoading">
+                    <div class="spinner"></div>
+                    <div>Analyzing image...</div>
+                </div>
+                <img id="imagePreview" class="image-preview" style="display: none;">
+            </div>
+            
+            <div class="chat-section">
+                <h2 class="section-title">💬 Ask Questions</h2>
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message assistant">
+                            👋 Hi! Upload a photo and I'll help you analyze it. Ask me anything about the image!
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="questionInput" placeholder="Ask a question about the image..." disabled>
+                        <button class="btn" id="askBtn" disabled>Ask</button>
+                    </div>
+                </div>
+                <div class="loading" id="askLoading">
+                    <div class="spinner"></div>
+                    <div>Thinking...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="faq-section">
+            <h2 class="section-title">❓ Frequently Asked Questions</h2>
+            <div id="faqContainer">
+                <!-- FAQ items will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadLoading = document.getElementById('uploadLoading');
+        const imagePreview = document.getElementById('imagePreview');
+        const questionInput = document.getElementById('questionInput');
+        const askBtn = document.getElementById('askBtn');
+        const askLoading = document.getElementById('askLoading');
+        const chatMessages = document.getElementById('chatMessages');
+        const faqContainer = document.getElementById('faqContainer');
+        
+        // Event listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadBtn.addEventListener('click', uploadImage);
+        askBtn.addEventListener('click', askQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') askQuestion();
+        });
+        
+        // Load FAQ on page load
+        loadFAQ();
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        }
+        
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    uploadBtn.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        async function uploadImage() {
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            uploadLoading.style.display = 'block';
+            uploadBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentImage = result.filename;
+                    questionInput.disabled = false;
+                    askBtn.disabled = false;
+                    addMessage('assistant', '✅ Image uploaded and analyzed! Ask me anything about it.');
+                } else {
+                    addMessage('assistant', '❌ Error: ' + result.error);
+                }
+            } catch (error) {
+                addMessage('assistant', '❌ Error uploading image: ' + error.message);
+            } finally {
+                uploadLoading.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        }
+        
+        async function askQuestion() {
+            const question = questionInput.value.trim();
+            if (!question || !currentImage) return;
+            
+            addMessage('user', question);
+            questionInput.value = '';
+            askLoading.style.display = 'block';
+            askBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        filename: currentImage
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addMessage('assistant', result.answer);
+                } else {
+                    addMessage('assistant', '❌ Error: ' + result.error);
+                }
+            } catch (error) {
+                addMessage('assistant', '❌ Error asking question: ' + error.message);
+            } finally {
+                askLoading.style.display = 'none';
+                askBtn.disabled = false;
+            }
+        }
+        
+        function addMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        async function loadFAQ() {
+            try {
+                const response = await fetch('/faq');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayFAQ(result.questions);
+                }
+            } catch (error) {
+                console.error('Error loading FAQ:', error);
+            }
+        }
+        
+        function displayFAQ(questions) {
+            faqContainer.innerHTML = '';
+            
+            questions.forEach(qa => {
+                const faqItem = document.createElement('div');
+                faqItem.className = 'faq-item';
+                
+                faqItem.innerHTML = `
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        ${qa.question}
+                    </div>
+                    <div class="faq-answer">
+                        ${qa.answer}
+                    </div>
+                `;
+                
+                faqContainer.appendChild(faqItem);
+            });
+        }
+        
+        function toggleFAQ(element) {
+            const answer = element.nextElementSibling;
+            answer.classList.toggle('show');
+        }
+    </script>
+</body>
+</html>'''
+    
+    # Write the HTML template
+    with open(templates_dir / 'index.html', 'w', encoding='utf-8') as f:
+        f.write(html_template)
+    
+    return app 

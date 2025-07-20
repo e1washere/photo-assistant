@@ -1,0 +1,60 @@
+{
+  "categories": {
+    "general": {
+      "name": "General Questions",
+      "questions": [
+        {
+          "question": "What can this photo assistant do?",
+          "answer": "This photo assistant can analyze images to detect objects, extract text, identify scenes, and answer questions about photos using AI-powered vision and language models."
+        },
+        {
+          "question": "How do I upload a photo?",
+          "answer": "You can upload photos through the web interface by clicking the upload button and selecting an image file from your device."
+        },
+        {
+          "question": "What file formats are supported?",
+          "answer": "The assistant supports common image formats including JPEG, PNG, GIF, and WebP files."
+        }
+      ]
+    },
+    "analysis": {
+      "name": "Photo Analysis",
+      "questions": [
+        {
+          "question": "What information can you extract from photos?",
+          "answer": "I can detect objects, recognize text (OCR), identify scenes and concepts, detect faces, and provide detailed descriptions of image content."
+        },
+        {
+          "question": "How accurate is the analysis?",
+          "answer": "The analysis uses state-of-the-art AI models with high accuracy, though results may vary depending on image quality and content complexity."
+        },
+        {
+          "question": "Can you read text in images?",
+          "answer": "Yes, I can extract and read text from images using optical character recognition (OCR) technology."
+        }
+      ]
+    },
+    "usage": {
+      "name": "Usage Tips",
+      "questions": [
+        {
+          "question": "How do I ask questions about my photos?",
+          "answer": "After uploading a photo, you can type questions in the chat interface. Ask about objects, colors, text, or any other aspects of the image."
+        },
+        {
+          "question": "What types of questions work best?",
+          "answer": "Specific questions work best, such as 'What objects do you see?', 'Is there text in this image?', or 'Describe the colors in this photo.'"
+        },
+        {
+          "question": "Can you compare multiple photos?",
+          "answer": "Currently, the assistant analyzes one photo at a time. You can upload different photos sequentially for comparison."
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2024-01-01",
+    "total_questions": 9
+  }
+} 

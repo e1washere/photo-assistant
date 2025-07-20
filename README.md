@@ -1,18 +1,14 @@
-# Photo Assistant
+# Photo Assistant - AI-Powered Image Analysis System
 
 [![CI/CD](https://github.com/e1washere/photo-assistant/workflows/CI%2FCD/badge.svg)](https://github.com/e1washere/photo-assistant/actions)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red.svg)](https://streamlit.io/)
-[![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange.svg)](https://openai.com/)
-[![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Vision%20API-yellow.svg)](https://cloud.google.com/vision)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/e1washere/photo-assistant/actions)
 
-AI-powered image analysis system using Google Cloud Vision API and OpenAI GPT-4 for intelligent image understanding and Q&A capabilities.
+A comprehensive photo analysis and FAQ system that leverages cloud vision APIs and LLM capabilities to provide intelligent photo insights and answers.
 
-## 🚀 Enterprise Features
+## Enterprise Features
 
 - **CI/CD Pipeline** - Automated testing and deployment
 - **Performance Monitoring** - Real-time metrics and health checks
@@ -40,35 +36,46 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Demo
+## Configuration
 
-Try the live demo or run locally:
+Set up your API keys:
 
 ```bash
-# Quick demo with sample image
-python main.py --demo
+# OpenAI API Key
+export OPENAI_API_KEY="your-openai-key"
 
-# Streamlit interface
-python run_streamlit.py
+# Google Cloud Credentials
+export GOOGLE_APPLICATION_CREDENTIALS="path/to/credentials.json"
 ```
 
 ## Usage
 
-### Streamlit Interface
-```bash
-python run_streamlit.py
-```
+### Command Line Interface
 
-### Command Line
 ```bash
+# Analyze an image
 python main.py --image path/to/image.jpg
+
+# Analyze image and answer a question
 python main.py --image path/to/image.jpg --question "What objects do you see?"
+
+# Run demo with sample image
+python main.py --demo
 ```
 
-### Flask API
+### Web Interfaces
+
 ```bash
+# Streamlit interface
+python run_streamlit.py
+
+# Flask API
 python main.py --web
 ```
+
+### API Documentation
+
+Access Swagger documentation at: `http://localhost:5000/docs/`
 
 ## Project Structure
 
@@ -76,72 +83,39 @@ python main.py --web
 photo-assistant/
 ├── main.py                 # CLI and Flask entry point
 ├── run_streamlit.py        # Streamlit launcher
-├── cloud/                  # AI service integrations
-│   ├── vision_api.py      # Google Cloud Vision client
-│   └── llm_api.py         # OpenAI GPT-4 client
-├── faq/                   # FAQ system
-│   └── faq_handler.py     # Semantic search and Q&A
-├── ui/                    # Web interfaces
-│   ├── app.py            # Flask application
-│   └── streamlit_app.py  # Streamlit application
-├── data/                  # Data files
-│   └── faq.json          # FAQ database
-├── static/                # Static assets
-├── requirements.txt       # Python dependencies
-└── README.md             # Project documentation
+├── api_docs.py            # Swagger API documentation
+├── dashboard.py           # Real-time monitoring dashboard
+├── monitoring.py          # Performance monitoring system
+├── cloud/                 # AI service integrations
+│   ├── vision_api.py     # Google Cloud Vision client
+│   └── llm_api.py        # OpenAI GPT-4 client
+├── faq/                  # FAQ system
+│   └── faq_handler.py    # Semantic search and Q&A
+├── ui/                   # Web interfaces
+│   ├── app.py           # Flask application
+│   └── streamlit_app.py # Streamlit application
+├── tests/                # Unit tests
+│   └── test_vision_api.py
+├── data/                 # Data files
+│   └── faq.json         # FAQ database
+├── static/               # Static assets
+├── .github/workflows/    # CI/CD pipeline
+├── requirements.txt      # Python dependencies
+└── README.md            # Project documentation
 ```
-
-## API Documentation
-
-### Core Endpoints
-
-| Endpoint | Method | Description | Example |
-|----------|--------|-------------|---------|
-| `/` | GET | Main application interface | `curl http://localhost:5000/` |
-| `/upload` | POST | Upload and analyze image | `curl -X POST -F "file=@image.jpg" http://localhost:5000/upload` |
-| `/ask` | POST | Ask questions about images | `curl -X POST -H "Content-Type: application/json" -d '{"question": "What objects do you see?", "filename": "image.jpg"}' http://localhost:5000/ask` |
-| `/faq` | GET | Retrieve FAQ data | `curl http://localhost:5000/faq` |
-| `/faq/answer` | POST | Semantic FAQ search | `curl -X POST -H "Content-Type: application/json" -d '{"query": "How to upload?"}' http://localhost:5000/faq/answer` |
-
-### Response Format
-
-```json
-{
-  "success": true,
-  "vision_description": "This image contains: nature, landscape, outdoor",
-  "llm_description": "A beautiful natural landscape featuring outdoor scenery",
-  "labels": ["nature", "landscape", "outdoor"],
-  "tags": ["nature", "landscape", "outdoor", "scenery"]
-}
-```
-
-## Features
-
-| Feature | Description | Implementation |
-|---------|-------------|----------------|
-| **Image Analysis** | Object detection, OCR, scene classification | Google Cloud Vision API |
-| **Natural Language Q&A** | Ask questions about images in plain English | OpenAI GPT-4 |
-| **Semantic Search** | Find relevant FAQ answers using embeddings | Sentence Transformers |
-| **Multiple Interfaces** | Streamlit UI, CLI, REST API | Flask + Streamlit |
-| **Real-time Processing** | Instant analysis and response generation | Async processing |
-
-## Limitations
-
-- Requires internet connection for cloud services
-- Maximum 16MB file size
-- API rate limits apply
-- Images processed by external services
 
 ## API Endpoints
 
 ### Core Endpoints
 
-- `GET /` - Main application interface
-- `POST /upload` - Upload and analyze an image
-- `POST /ask` - Ask questions about uploaded images
-- `GET /faq` - Retrieve FAQ data
-- `POST /faq/search` - Search FAQ questions
-- `GET /health` - Health check endpoint
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Main application interface |
+| `/upload` | POST | Upload and analyze image |
+| `/ask` | POST | Ask questions about images |
+| `/faq` | GET | Retrieve FAQ data |
+| `/faq/search` | POST | Search FAQ questions |
+| `/health` | GET | Health check endpoint |
 
 ### Example Usage
 
@@ -155,28 +129,17 @@ curl -X POST -H "Content-Type: application/json" \
   http://localhost:5000/ask
 ```
 
-## Project Structure
+## Features
 
-```
-photo-assistant/
-├── main.py                 # Flask application entry point
-├── run_streamlit.py        # Streamlit application launcher
-├── cloud/                  # Cloud API integrations
-│   ├── vision_api.py      # Google Cloud Vision API client
-│   └── llm_api.py         # OpenAI GPT API client
-├── faq/                   # FAQ management
-│   └── faq_handler.py     # FAQ operations and semantic search
-├── ui/                    # Web interface
-│   ├── app.py            # Flask application and routes
-│   └── streamlit_app.py  # Streamlit application
-├── data/                  # Data files
-│   └── faq.json          # FAQ database
-├── static/                # Static assets
-│   ├── uploads/          # Uploaded images (auto-created)
-│   └── sample.jpg        # Sample image
-├── requirements.txt       # Python dependencies
-└── README.md             # Project documentation
-```
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Image Analysis** | Object detection, OCR, scene classification | Google Cloud Vision API |
+| **Natural Language Q&A** | Ask questions about images in plain English | OpenAI GPT-4 |
+| **Semantic Search** | Find relevant FAQ answers using embeddings | Sentence Transformers |
+| **Multiple Interfaces** | Streamlit UI, CLI, REST API | Flask + Streamlit |
+| **Real-time Processing** | Instant analysis and response generation | Async processing |
+| **Performance Monitoring** | System health and metrics tracking | Custom monitoring |
+| **API Documentation** | Interactive API documentation | Swagger/OpenAPI |
 
 ## Development
 
@@ -187,12 +150,28 @@ photo-assistant/
 - **Error Handling**: Robust error handling with graceful fallbacks
 - **Testing**: Mock responses for development without API keys
 
-### Adding Features
+### Running Tests
 
-1. **New API Endpoints**: Add routes in `ui/app.py`
-2. **FAQ Management**: Extend `faq/faq_handler.py`
-3. **Vision Analysis**: Enhance `cloud/vision_api.py`
-4. **LLM Integration**: Modify `cloud/llm_api.py`
+```bash
+# Run all tests
+python test_functionality.py
+
+# Run unit tests with pytest
+pytest tests/
+
+# Run with coverage
+pytest --cov=./ --cov-report=html
+```
+
+### Code Formatting
+
+```bash
+# Format code with Black
+black .
+
+# Lint code with Flake8
+flake8 .
+```
 
 ## Deployment
 
@@ -211,35 +190,58 @@ gunicorn -w 4 -b 0.0.0.0:5000 main:app
 
 ### Docker Deployment
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "main:app"]
+```bash
+# Build and run with Docker
+docker build -t photo-assistant .
+docker run -p 5000:5000 photo-assistant
+
+# Or use Docker Compose
+docker-compose up -d
 ```
 
-## Security Considerations
+## Monitoring and Analytics
 
-- API keys are stored as environment variables
-- File upload validation and size limits
-- Secure filename handling
-- CORS configuration for production
-- Input sanitization and validation
+### Dashboard
+
+Access the real-time monitoring dashboard:
+```bash
+python dashboard.py
+```
+
+### Metrics
+
+The system collects:
+- API call performance metrics
+- System resource utilization
+- Error rates and success rates
+- Processing time statistics
+
+### Health Checks
+
+Monitor system health:
+```bash
+curl http://localhost:5000/health
+```
+
+## Limitations
+
+- Requires internet connection for cloud services
+- Maximum 16MB file size
+- API rate limits apply
+- Images processed by external services
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes with proper type hints and documentation
-4. Test thoroughly
-5. Submit a pull request
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
